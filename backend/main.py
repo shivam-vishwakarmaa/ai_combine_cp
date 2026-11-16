@@ -1,118 +1,90 @@
-from fastapi import FastAPI, HTTPException
+"""
+EcoSentinel AI — Unified Master Backend
+========================================
+Combines:
+  1. EcoMonitor AI (Air Quality & Flood Risk Machine Learning Services)
+  2. Wildfire Intelligence Platform (Dual-model SAINet/YOLOv8 & Incident WebSocket Engine)
+  3. AETHER Deforestation AI (Satellite Change Detection & Spatial Intelligence)
+"""
+import sys
+from pathlib import Path
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-import joblib
-import pandas as pd
+from fastapi.responses import JSONResponse
 
-app = FastAPI(title="Environmental Monitoring API")
+# Add backend directory to sys.path
+BASE_DIR = Path(__file__).resolve().parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
 
-# Setup CORS to allow the React frontend to communicate with this API
+from routers.environmental import router as environmental_router
+from routers.wildfire import router as wildfire_router
+from routers.deforestation import router as deforestation_router
+
+app = FastAPI(
+    title="EcoSentinel AI — Integrated Environmental & Forest Intelligence Platform",
+    version="2.0.0",
+    description=(
+        "Enterprise-grade platform integrating real-time environmental hazard prediction, "
+        "dual-model wildfire detection & incident dispatch, and satellite deforestation spatial analytics."
+    ),
+    docs_url="/docs",
+    redoc_url="/redoc",
+)
+
+# Comprehensive CORS Middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # In production, replace with frontend URL
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Load the trained models globally
-air_model_data = None
-flood_model_data = None
-
-try:
-    air_model_data = joblib.load('models/air_quality_model.joblib')
-    print("Air Quality Model loaded.")
-except Exception as e:
-    print(f"Failed to load Air Quality model: {e}")
-
-try:
-    flood_model_data = joblib.load('models/flood_model.joblib')
-    print("Flood Model loaded.")
-except Exception as e:
-    print(f"Failed to load Flood model: {e}")
+# Mount all domain routers
+app.include_router(environmental_router)
+app.include_router(wildfire_router)
+app.include_router(deforestation_router)
 
 
-# Define Pydantic models for the request bodies
-class AirQualityRequest(BaseModel):
-    T: float # Temperature
-    RH: float # Relative Humidity
-    AH: float # Absolute Humidity
-    NOx_GT: float # NOx concentration
-    NO2_GT: float # NO2 concentration
-
-class FloodRequest(BaseModel):
-    MonsoonIntensity: int
-    RiverManagement: int
-    Deforestation: int
-    Urbanization: int
-    ClimateChange: int
-    DamsQuality: int
-    DrainageSystems: int
-
-
-@app.get("/")
-def read_root():
-    return {"message": "Welcome to the Environmental Monitoring API"}
-
-@app.post("/predict/air-quality")
-def predict_air_quality(data: AirQualityRequest):
-    if not air_model_data:
-        raise HTTPException(status_code=500, detail="Air Quality model is not loaded.")
-        
-    model = air_model_data['model']
-    imputer = air_model_data['imputer']
-    features = air_model_data['features']
-    
-    # Map request payload to dataframe using the correct feature names from training
-    # Note: Pydantic doesn't allow parentheses in field names, so we map NOx_GT to NOx(GT)
-    input_data = pd.DataFrame([{
-        'T': data.T,
-        'RH': data.RH,
-        'AH': data.AH,
-        'NOx(GT)': data.NOx_GT,
-        'NO2(GT)': data.NO2_GT
-    }])
-    
-    # Preprocess
-    input_imputed = imputer.transform(input_data)
-    
-    # Predict
-    prediction = model.predict(input_imputed)[0]
-    
+@app.get("/", summary="Platform Root Metadata")
+def root_status():
     return {
-        "prediction_CO_GT": float(prediction),
-        "status": "Good" if prediction < 2.0 else ("Moderate" if prediction < 5.0 else "Hazardous")
+        "platform": "EcoSentinel AI",
+        "version": "2.0.0",
+        "status": "online",
+        "modules": {
+            "environmental": {
+                "name": "EcoMonitor AI",
+                "capabilities": ["Air Quality Index & CO Prediction", "Flood Risk Classification & Probability"],
+                "endpoints": ["/predict/air-quality", "/predict/flood", "/training-metrics"],
+            },
+            "wildfire": {
+                "name": "Wildfire Intelligence Platform",
+                "capabilities": ["SAINet Flame/Smoke Detection", "YOLOv8 Situational Context", "Incident State Machine", "WebSocket Realtime Stream"],
+                "endpoints": ["/api/frame", "/api/detect", "/api/incidents", "/ws", "/api/simulation/start"],
+            },
+            "deforestation": {
+                "name": "AETHER Deforestation AI",
+                "capabilities": ["Satellite Bi-temporal Change Detection", "Binary Segmentation Mask", "4x4 Grid Hotspot Clustering"],
+                "endpoints": ["/api/v1/deforestation/analyze", "/api/v1/deforestation/predict-mask", "/api/v1/model"],
+            },
+        },
+        "docs_url": "/docs",
     }
 
-@app.get("/training-metrics")
-def get_training_metrics():
-    import os, json
-    metrics_path = os.path.join(os.path.dirname(__file__), 'data', 'training_metrics.json')
-    if os.path.exists(metrics_path):
-        with open(metrics_path, 'r') as f:
-            return json.load(f)
-    return {"message": "Metrics report not found. Run train_models.py first."}
 
-@app.post("/predict/flood")
-def predict_flood(data: FloodRequest):
-    if not flood_model_data:
-        raise HTTPException(status_code=500, detail="Flood model is not loaded.")
-        
-    model = flood_model_data['model']
-    features = flood_model_data['features']
-    
-    # Map request to dataframe using exact features expected by the trained model
-    input_dict = data.model_dump()
-    row = {feat: input_dict.get(feat, 5) for feat in features}
-    input_data = pd.DataFrame([row])
-    
-    # Predict
-    prediction = model.predict(input_data)[0]
-    probabilities = model.predict_proba(input_data)[0]
-    
+@app.get("/health", summary="Unified System Health")
+def unified_health():
     return {
-        "flood_risk_prediction": int(prediction),
-        "risk_label": "High Risk" if prediction == 1 else "Low Risk",
-        "probability_high_risk": float(probabilities[1])
+        "status": "healthy",
+        "service": "EcoSentinel AI Master Backend",
+        "environmental_engine": "online",
+        "wildfire_engine": "online",
+        "deforestation_engine": "online",
     }
 
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

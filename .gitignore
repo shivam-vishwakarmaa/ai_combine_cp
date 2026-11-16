@@ -15,9 +15,7 @@ __pycache__/
 *$py.class
 *.so
 .Python
-build/
 develop-eggs/
-dist/
 downloads/
 eggs/
 .eggs/
@@ -48,6 +46,16 @@ venv.bak/
 .env.production
 *.pem
 *.key
+
+# Heavy Deep Learning Model Weights & Checkpoints (distributed separately)
+*.pt
+*.pth
+*.onnx
+*.h5
+*.ckpt
+backend/outputs/
+outputs/
+checkpoints/
 
 # IDE & Editor files
 .vscode/
