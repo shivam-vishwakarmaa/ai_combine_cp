@@ -3,12 +3,76 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Activity, Wifi, WifiOff, AlertTriangle, CheckCircle2, Clock,
   MapPin, Crosshair, Flame, Wind, Eye, Send, RefreshCw, Zap,
-  Shield, ChevronRight, Circle, Radio
+  Shield, ChevronRight, Circle, Radio, User, Car
 } from 'lucide-react';
 import type {
   Incident, BEDetection, BEAlert, AuditEntry, WSMessage, SeverityLevel
 } from '../types/backend';
 import { DetectionOverlay } from '../components/DetectionOverlay';
+
+export const HUMAN_CLASSES = new Set(['person', 'human', 'people', 'man', 'woman', 'child']);
+export const ANIMAL_CLASSES = new Set([
+  'bird', 'cat', 'dog', 'horse', 'sheep', 'cow', 'elephant',
+  'bear', 'zebra', 'giraffe', 'deer', 'fox', 'wolf', 'lion',
+  'tiger', 'monkey', 'rabbit', 'snake', 'boar', 'animal', 'wildlife'
+]);
+
+export function getCategoryInfo(d: BEDetection): {
+  category: 'human' | 'animal' | 'fire' | 'smoke' | 'vehicle' | 'object';
+  label: string;
+  badgeClass: string;
+  color: string;
+} {
+  const cls = (d.class || '').toLowerCase();
+  const cat = (d.category || '').toLowerCase();
+
+  if (cat === 'human' || HUMAN_CLASSES.has(cls)) {
+    return {
+      category: 'human',
+      label: d.display_label || `HUMAN (${cls.toUpperCase()})`,
+      badgeClass: 'bg-cyan-950/70 text-cyan-300 border-cyan-800/60',
+      color: '#00f0ff',
+    };
+  }
+  if (cat === 'animal' || ANIMAL_CLASSES.has(cls)) {
+    return {
+      category: 'animal',
+      label: d.display_label || `ANIMAL (${cls.toUpperCase()})`,
+      badgeClass: 'bg-emerald-950/70 text-emerald-300 border-emerald-800/60',
+      color: '#10b981',
+    };
+  }
+  if (cls.includes('fire') || cls.includes('flame') || (cat === 'fire_smoke' && cls.includes('fire'))) {
+    return {
+      category: 'fire',
+      label: 'FIRE DETECTED',
+      badgeClass: 'bg-red-950/70 text-red-300 border-red-800/60',
+      color: '#ef4444',
+    };
+  }
+  if (cls.includes('smoke')) {
+    return {
+      category: 'smoke',
+      label: 'SMOKE DETECTED',
+      badgeClass: 'bg-orange-950/70 text-orange-300 border-orange-800/60',
+      color: '#f97316',
+    };
+  }
+  if (['car', 'truck', 'bus', 'motorcycle', 'bicycle'].includes(cls) || cat === 'vehicle') {
+    return {
+      category: 'vehicle',
+      label: `VEHICLE (${cls.toUpperCase()})`,
+      badgeClass: 'bg-sky-950/70 text-sky-300 border-sky-800/60',
+      color: '#38bdf8',
+    };
+  }
+  return {
+    category: 'object',
+    label: cls.toUpperCase(),
+    badgeClass: 'bg-charcoal-800 text-charcoal-300 border-charcoal-700',
+    color: '#94a3b8',
+  };
+}
 
 const proto = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 const host = typeof window !== 'undefined' ? window.location.host : 'localhost:5173';
@@ -163,25 +227,61 @@ function DetectionFeed({ detections }: { detections: BEDetection[] }) {
   return (
     <div className="space-y-1.5 max-h-64 overflow-y-auto">
       <AnimatePresence initial={false}>
-        {detections.slice(0, 20).map((d) => (
-          <motion.div
-            key={d.id}
-            layout
-            initial={{ opacity: 0, x: 10 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -10 }}
-            className="flex items-center space-x-2 py-1 border-b border-charcoal-800/50 text-[10px] font-mono"
-          >
-            <Crosshair
-              className="w-3 h-3 flex-shrink-0"
-              style={{ color: d.class === 'fire' ? '#ff3300' : d.class === 'smoke' ? '#ffaa00' : '#6ab0ff' }}
-            />
-            <span className="uppercase text-charcoal-300 w-14 flex-shrink-0">{d.class}</span>
-            <span className="text-charcoal-500">{(d.confidence * 100).toFixed(0)}%</span>
-            <span className="text-charcoal-600 flex-1 truncate">{d.source_id}</span>
-            <span className="text-charcoal-600">{new Date(d.ts).toLocaleTimeString()}</span>
-          </motion.div>
-        ))}
+        {detections.slice(0, 30).map((d) => {
+          const info = getCategoryInfo(d);
+          return (
+            <motion.div
+              key={d.id}
+              layout
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -10 }}
+              className="flex items-center space-x-2 py-1.5 px-2 rounded border border-charcoal-800/60 bg-charcoal-950/60 text-[10px] font-mono hover:border-charcoal-700 transition"
+            >
+              {info.category === 'human' ? (
+                <User className="w-3.5 h-3.5 flex-shrink-0 text-cyan-400" />
+              ) : info.category === 'animal' ? (
+                <Activity className="w-3.5 h-3.5 flex-shrink-0 text-emerald-400" />
+              ) : info.category === 'fire' ? (
+                <Flame className="w-3.5 h-3.5 flex-shrink-0 text-red-500 animate-pulse" />
+              ) : info.category === 'smoke' ? (
+                <Wind className="w-3.5 h-3.5 flex-shrink-0 text-orange-400" />
+              ) : info.category === 'vehicle' ? (
+                <Car className="w-3.5 h-3.5 flex-shrink-0 text-sky-400" />
+              ) : (
+                <Crosshair className="w-3.5 h-3.5 flex-shrink-0 text-charcoal-400" />
+              )}
+
+              {/* Category Badge */}
+              <span className={`px-1.5 py-0.5 rounded text-[8.5px] font-bold border ${info.badgeClass} flex-shrink-0`}>
+                {info.category === 'human'
+                  ? 'HUMAN'
+                  : info.category === 'animal'
+                  ? 'ANIMAL'
+                  : info.category === 'fire'
+                  ? 'FIRE'
+                  : info.category === 'smoke'
+                  ? 'SMOKE'
+                  : info.category.toUpperCase()}
+              </span>
+
+              <span className="font-semibold text-white truncate max-w-[100px]">
+                {d.class}
+              </span>
+
+              <span className="text-charcoal-400 font-bold ml-auto">
+                {Math.round((d.confidence || 0) * 100)}%
+              </span>
+
+              <span className="text-charcoal-500 text-[9px] truncate max-w-[80px]">
+                {d.source_id}
+              </span>
+              <span className="text-charcoal-600 text-[9px]">
+                {new Date(d.ts).toLocaleTimeString()}
+              </span>
+            </motion.div>
+          );
+        })}
       </AnimatePresence>
       {detections.length === 0 && (
         <div className="text-[10px] text-charcoal-600 font-mono text-center py-4">
@@ -284,6 +384,9 @@ export const CommandCenter: React.FC = () => {
         if (msg.type === 'snapshot') {
           setIncidents(msg.payload.incidents ?? []);
           setAudit(msg.payload.audit ?? []);
+          if (msg.payload.detections) {
+            setDetections(dedupeById(msg.payload.detections));
+          }
         } else if (msg.type === 'incident') {
           setIncidents((prev) => dedupeById([msg.payload, ...prev]).slice(0, 100));
         } else if (msg.type === 'detections') {
@@ -315,8 +418,19 @@ export const CommandCenter: React.FC = () => {
     (i) => !['RESOLVED', 'FALSE_POSITIVE'].includes(i.state)
   );
   const criticalCount = incidents.filter((i) => i.severity >= 4).length;
-  const fireDetections = detections.filter((d) => d.class === 'fire').length;
-  const smokeDetections = detections.filter((d) => d.class === 'smoke').length;
+  const fireDetections = detections.filter((d) => {
+    const cls = (d.class || '').toLowerCase();
+    return cls.includes('fire') || cls.includes('flame');
+  }).length;
+  const smokeDetections = detections.filter((d) => (d.class || '').toLowerCase().includes('smoke')).length;
+  const humanDetections = detections.filter((d) => {
+    const cls = (d.class || '').toLowerCase();
+    return d.category === 'human' || HUMAN_CLASSES.has(cls);
+  }).length;
+  const animalDetections = detections.filter((d) => {
+    const cls = (d.class || '').toLowerCase();
+    return d.category === 'animal' || ANIMAL_CLASSES.has(cls);
+  }).length;
 
   return (
     <div className="space-y-5">
@@ -325,7 +439,7 @@ export const CommandCenter: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-white">Wildfire Command Center</h1>
           <p className="text-xs text-charcoal-400 mt-1 font-mono">
-            Real-time AI detection pipeline · SAINet v11.1 + YOLOv8n
+            Real-time AI detection pipeline · SAINet v11.1 (Fire &amp; Smoke) + YOLOv8n (Humans &amp; Wildlife)
           </p>
         </div>
         <div className="flex items-center space-x-2">
@@ -341,21 +455,23 @@ export const CommandCenter: React.FC = () => {
         </div>
       </div>
 
-      {/* Summary Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {/* Summary Stats Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {[
-          { label: 'Active Incidents', value: activeIncidents.length, icon: AlertTriangle, color: 'text-red-400' },
-          { label: 'Critical', value: criticalCount, icon: Flame, color: 'text-red-500' },
-          { label: 'Fire Detections', value: fireDetections, icon: Eye, color: 'text-orange-400' },
-          { label: 'Smoke Detections', value: smokeDetections, icon: Wind, color: 'text-yellow-400' },
+          { label: 'Active Incidents', value: activeIncidents.length, icon: AlertTriangle, color: 'text-red-400', border: 'border-red-900/40' },
+          { label: 'Critical', value: criticalCount, icon: Flame, color: 'text-red-500', border: 'border-red-900/40' },
+          { label: 'Fire Detected', value: fireDetections, icon: Eye, color: 'text-orange-400', border: 'border-orange-900/40' },
+          { label: 'Smoke Plumes', value: smokeDetections, icon: Wind, color: 'text-amber-400', border: 'border-amber-900/40' },
+          { label: 'Humans Detected', value: humanDetections, icon: User, color: 'text-cyan-400', border: 'border-cyan-800/50' },
+          { label: 'Wildlife / Animals', value: animalDetections, icon: Activity, color: 'text-emerald-400', border: 'border-emerald-800/50' },
         ].map((stat) => (
-          <div key={stat.label} className="flex items-center space-x-3 p-3 border border-charcoal-800 rounded bg-charcoal-900/60">
-            <div className={`p-2 bg-charcoal-800 rounded ${stat.color}`}>
+          <div key={stat.label} className={`flex items-center space-x-3 p-3 border rounded bg-charcoal-900/70 ${stat.border}`}>
+            <div className={`p-2 bg-charcoal-800/80 rounded ${stat.color}`}>
               <stat.icon className="w-4 h-4" />
             </div>
-            <div>
-              <p className="text-[10px] text-charcoal-500 uppercase tracking-widest font-mono">{stat.label}</p>
-              <p className="text-2xl font-bold text-white font-mono">{stat.value}</p>
+            <div className="min-w-0">
+              <p className="text-[9px] text-charcoal-500 uppercase tracking-widest font-mono truncate">{stat.label}</p>
+              <p className="text-xl font-bold text-white font-mono">{stat.value}</p>
             </div>
           </div>
         ))}

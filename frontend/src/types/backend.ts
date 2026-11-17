@@ -58,6 +58,8 @@ export interface BEDetection {
   source_id: string;
   source_type?: 'camera' | 'user' | 'sensor';
   class: DetectionClass;
+  category?: 'fire_smoke' | 'human' | 'animal' | 'vehicle' | 'object' | string;
+  display_label?: string;
   confidence: number;
   location: GeoPoint;
   bbox?: number[] | null;
@@ -161,6 +163,7 @@ export type WSMessage =
       type: 'snapshot';
       payload: {
         incidents: Incident[];
+        detections?: BEDetection[];
         audit: AuditEntry[];
         config?: Partial<AppConfig>;
       };

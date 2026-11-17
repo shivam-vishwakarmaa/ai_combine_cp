@@ -86,6 +86,8 @@ class Detection(BaseModel):
     location: GeoPoint
     bbox: Optional[List[float]] = None
     note: Optional[str] = None
+    category: Optional[str] = None
+    display_label: Optional[str] = None
 
     class Config:
         populate_by_name = True

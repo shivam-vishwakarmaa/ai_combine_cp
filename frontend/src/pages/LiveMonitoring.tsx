@@ -3,8 +3,18 @@ import GlassCard from '../components/GlassCard';
 import { useDashboard } from '../context/DashboardContext';
 import {
   Camera, CameraOff, Play, Square, Activity, AlertTriangle,
-  Flame, Wind, Trees, RefreshCw, ChevronDown, ShieldAlert, Eye
+  Flame, Wind, Trees, RefreshCw, ChevronDown, ShieldAlert, Eye,
+  User, Zap, Car, ShieldCheck
 } from 'lucide-react';
+import type { BEDetection } from '../types/backend';
+import { DetectionOverlay } from '../components/DetectionOverlay';
+
+const HUMAN_CLASSES = new Set(['person', 'human', 'people', 'man', 'woman', 'child']);
+const ANIMAL_CLASSES = new Set([
+  'bird', 'cat', 'dog', 'horse', 'sheep', 'cow', 'elephant',
+  'bear', 'zebra', 'giraffe', 'deer', 'fox', 'wolf', 'lion',
+  'tiger', 'monkey', 'rabbit', 'snake', 'boar', 'animal', 'wildlife'
+]);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -138,6 +148,69 @@ export const LiveMonitoring: React.FC = () => {
 
   const [events, setEvents] = useState<EventEntry[]>([]);
   const [fps, setFps] = useState(0);
+  const [liveDetections, setLiveDetections] = useState<BEDetection[]>([]);
+  const [simLoading, setSimLoading] = useState(false);
+  const wsRef = useRef<WebSocket | null>(null);
+
+  // ── WebSocket for Live Backend AI Detections ─────────────────────────────
+  useEffect(() => {
+    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host || 'localhost:5173';
+    const ws = new WebSocket(`${proto}//${host}/ws`);
+    wsRef.current = ws;
+
+    ws.onmessage = (ev) => {
+      try {
+        const msg = JSON.parse(ev.data);
+        if (msg.type === 'detections' && Array.isArray(msg.payload)) {
+          setLiveDetections(msg.payload);
+        } else if (msg.type === 'snapshot' && msg.payload.detections) {
+          setLiveDetections(msg.payload.detections.slice(0, 8));
+        }
+      } catch {}
+    };
+
+    return () => {
+      ws.close();
+    };
+  }, []);
+
+  // ── Periodic Frame Inference (sends camera frames to dual YOLO+SAINet backend) ──
+  useEffect(() => {
+    if (camState !== 'active') return;
+    const interval = setInterval(() => {
+      const canvas = canvasRef.current;
+      if (!canvas || !videoRef.current) return;
+      canvas.toBlob(async (blob) => {
+        if (!blob) return;
+        try {
+          const form = new FormData();
+          form.append('file', blob, 'webcam_frame.jpg');
+          form.append('lat', '19.076');
+          form.append('lon', '72.877');
+          form.append('source_id', 'LIVE-CAM-01');
+          const res = await fetch('/api/frame', { method: 'POST', body: form });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.detections && Array.isArray(data.detections)) {
+              setLiveDetections(data.detections);
+            }
+          }
+        } catch {}
+      }, 'image/jpeg', 0.85);
+    }, 2500);
+
+    return () => clearInterval(interval);
+  }, [camState]);
+
+  const triggerSimulation = async () => {
+    setSimLoading(true);
+    try {
+      await fetch('/simulate', { method: 'POST' });
+      addToast('AI Detection Simulation started (Humans, Wildlife & Fire)', 'info');
+    } catch {}
+    setTimeout(() => setSimLoading(false), 2000);
+  };
 
   // ── Load available cameras ──────────────────────────────────────────────────
   useEffect(() => {
@@ -308,6 +381,16 @@ export const LiveMonitoring: React.FC = () => {
         </div>
 
         <div className="flex items-center space-x-2">
+          {/* Test simulation button */}
+          <button
+            onClick={triggerSimulation}
+            disabled={simLoading}
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded border border-charcoal-700 bg-charcoal-900 text-xs font-mono text-charcoal-300 hover:border-forest-600 hover:text-white transition disabled:opacity-50"
+          >
+            {simLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin text-forest-400" /> : <Zap className="w-3.5 h-3.5 text-amber-400" />}
+            <span>Test AI Detection</span>
+          </button>
+
           {/* Risk badge */}
           <div className={`flex items-center space-x-1.5 px-3 py-1.5 rounded border text-[10px] font-mono font-bold
             ${isActive
@@ -342,6 +425,16 @@ export const LiveMonitoring: React.FC = () => {
               className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${isActive ? 'opacity-100' : 'opacity-0'}`}
               muted
               playsInline
+            />
+
+            {/* Tactical AI Detection Overlay */}
+            <DetectionOverlay
+              detections={liveDetections}
+              width="100%"
+              height="100%"
+              className="absolute inset-0 pointer-events-none z-10"
+              sourceWidth={640}
+              sourceHeight={480}
             />
 
             {/* Scanline overlay */}
@@ -541,6 +634,78 @@ export const LiveMonitoring: React.FC = () => {
 
         {/* ── Right Panel ───────────────────────────────────────────────────── */}
         <div className="flex flex-col space-y-4">
+
+          {/* AI Sighted Entities: Humans, Wildlife & Hazards */}
+          <GlassCard hoverGlow={false}>
+            <div className="pb-2 border-b border-charcoal-800/40 mb-3 flex items-center justify-between">
+              <div className="flex items-center space-x-1.5">
+                <Eye className="w-3.5 h-3.5 text-cyan-400" />
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider">AI Sighted Entities</h4>
+              </div>
+              <span className="text-[9px] font-mono text-charcoal-400">
+                {liveDetections.length} active
+              </span>
+            </div>
+
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {liveDetections.slice(0, 8).map((d) => {
+                const cls = (d.class || '').toLowerCase();
+                const cat = (d.category || '').toLowerCase();
+                const isHuman = cat === 'human' || HUMAN_CLASSES.has(cls);
+                const isAnimal = cat === 'animal' || ANIMAL_CLASSES.has(cls);
+                const isFire = cls.includes('fire') || cls.includes('flame');
+
+                return (
+                  <div
+                    key={d.id}
+                    className="p-2 rounded border border-charcoal-800/60 bg-charcoal-950/70 text-[10px] font-mono flex items-center justify-between"
+                  >
+                    <div className="flex items-center space-x-2">
+                      {isHuman ? (
+                        <User className="w-3.5 h-3.5 text-cyan-400" />
+                      ) : isAnimal ? (
+                        <Activity className="w-3.5 h-3.5 text-emerald-400" />
+                      ) : isFire ? (
+                        <Flame className="w-3.5 h-3.5 text-red-500 animate-pulse" />
+                      ) : (
+                        <Wind className="w-3.5 h-3.5 text-amber-400" />
+                      )}
+                      <div>
+                        <div className="flex items-center space-x-1">
+                          <span
+                            className={`px-1 py-0.5 rounded text-[8px] font-bold ${
+                              isHuman
+                                ? 'bg-cyan-950 text-cyan-300 border border-cyan-800'
+                                : isAnimal
+                                ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
+                                : isFire
+                                ? 'bg-red-950 text-red-300 border border-red-800'
+                                : 'bg-orange-950 text-orange-300 border border-orange-800'
+                            }`}
+                          >
+                            {isHuman ? 'HUMAN' : isAnimal ? 'ANIMAL' : isFire ? 'FIRE' : 'SMOKE'}
+                          </span>
+                          <span className="text-white font-semibold">{d.class}</span>
+                        </div>
+                        <div className="text-[9px] text-charcoal-500 mt-0.5 truncate max-w-[140px]">
+                          {d.display_label || d.source_id}
+                        </div>
+                      </div>
+                    </div>
+                    <span className="font-bold text-charcoal-300">
+                      {Math.round((d.confidence || 0) * 100)}%
+                    </span>
+                  </div>
+                );
+              })}
+
+              {liveDetections.length === 0 && (
+                <p className="text-[10px] text-charcoal-600 font-mono text-center py-3">
+                  No entities detected in current buffer
+                </p>
+              )}
+            </div>
+          </GlassCard>
 
           {/* Detection bands */}
           <GlassCard hoverGlow={false}>

@@ -777,5 +777,445 @@
       359.00482177734375
     ],
     "note": null
+  },
+  {
+    "id": "3bf078c1-34ad-448c-aeeb-ac26ff5053c4",
+    "ts": "2026-11-17T07:33:34.549723+00:00",
+    "source_id": "CAMERA-SIM-01",
+    "source_type": "camera",
+    "class": "smoke",
+    "category": "fire_smoke",
+    "display_label": "SMOKE DETECTED",
+    "confidence": 0.82,
+    "location": {
+      "lat": 19.076,
+      "lon": 72.8777
+    },
+    "bbox": [
+      40.0,
+      40.0,
+      580.0,
+      420.0
+    ],
+    "source": "sainet",
+    "note": "simulation hazard"
+  },
+  {
+    "id": "facd63c1-6b4f-46d3-ad99-a2736bac46b6",
+    "ts": "2026-11-17T07:33:34.549745+00:00",
+    "source_id": "CAMERA-SIM-01",
+    "source_type": "camera",
+    "class": "person",
+    "category": "human",
+    "display_label": "HUMAN DETECTED (Person)",
+    "confidence": 0.94,
+    "location": {
+      "lat": 19.076,
+      "lon": 72.8777
+    },
+    "bbox": [
+      110.0,
+      90.0,
+      240.0,
+      410.0
+    ],
+    "source": "context",
+    "note": "simulation human"
+  },
+  {
+    "id": "63a038b0-7af6-432c-a329-bf14a524b7c7",
+    "ts": "2026-11-17T07:33:34.549764+00:00",
+    "source_id": "CAMERA-SIM-01",
+    "source_type": "camera",
+    "class": "deer",
+    "category": "animal",
+    "display_label": "ANIMAL DETECTED (Deer)",
+    "confidence": 0.91,
+    "location": {
+      "lat": 19.076,
+      "lon": 72.8777
+    },
+    "bbox": [
+      370.0,
+      210.0,
+      520.0,
+      360.0
+    ],
+    "source": "context",
+    "note": "simulation animal"
+  },
+  {
+    "id": "d5d43112-5e4b-467b-9bb9-d88df1e4085c",
+    "ts": "2026-11-17T07:33:35.764921+00:00",
+    "source_id": "CAMERA-SIM-01",
+    "source_type": "camera",
+    "class": "smoke",
+    "category": "fire_smoke",
+    "display_label": "SMOKE DETECTED",
+    "confidence": 0.85,
+    "location": {
+      "lat": 19.076,
+      "lon": 72.8777
+    },
+    "bbox": [
+      40.0,
+      30.0,
+      600.0,
+      430.0
+    ],
+    "source": "sainet",
+    "note": "simulation hazard"
+  },
+  {
+    "id": "eecc5d5a-0d29-483d-8e94-0b7851e88e86",
+    "ts": "2026-11-17T07:33:35.765034+00:00",
+    "source_id": "CAMERA-SIM-01",
+    "source_type": "camera",
+    "class": "bear",
+    "category": "animal",
+    "display_label": "ANIMAL DETECTED (Bear)",
+    "confidence": 0.89,
+    "location": {
+      "lat": 19.076,
+      "lon": 72.8777
+    },
+    "bbox": [
+      420.0,
+      160.0,
+      580.0,
+      320.0
+    ],
+    "source": "context",
+    "note": "simulation animal"
+  },
+  {
+    "id": "cbee6a78-2302-4a5b-b4bd-9143dd5ea69d",
+    "ts": "2026-11-17T07:33:35.765111+00:00",
+    "source_id": "CAMERA-SIM-01",
+    "source_type": "camera",
+    "class": "truck",
+    "category": "vehicle",
+    "display_label": "VEHICLE (Truck)",
+    "confidence": 0.87,
+    "location": {
+      "lat": 19.076,
+      "lon": 72.8777
+    },
+    "bbox": [
+      450.0,
+      230.0,
+      630.0,
+      390.0
+    ],
+    "source": "context",
+    "note": "simulation vehicle"
+  },
+  {
+    "id": "b7994172-3726-4bfd-8ea0-969bb78bed77",
+    "ts": "2026-11-17T07:33:36.974569+00:00",
+    "source_id": "CAMERA-SIM-01",
+    "source_type": "camera",
+    "class": "smoke",
+    "category": "fire_smoke",
+    "display_label": "SMOKE DETECTED",
+    "confidence": 0.89,
+    "location": {
+      "lat": 19.076,
+      "lon": 72.8777
+    },
+    "bbox": [
+      30.0,
+      20.0,
+      620.0,
+      450.0
+    ],
+    "source": "sainet",
+    "note": "simulation hazard"
+  },
+  {
+    "id": "be5e1cc2-2b1e-4a3c-b1d5-13930d1397eb",
+    "ts": "2026-11-17T07:33:36.974622+00:00",
+    "source_id": "CAMERA-SIM-01",
+    "source_type": "camera",
+    "class": "person",
+    "category": "human",
+    "display_label": "HUMAN DETECTED (Person)",
+    "confidence": 0.92,
+    "location": {
+      "lat": 19.076,
+      "lon": 72.8777
+    },
+    "bbox": [
+      130.0,
+      100.0,
+      270.0,
+      420.0
+    ],
+    "source": "context",
+    "note": "simulation human"
+  },
+  {
+    "id": "13f999cc-b557-445d-ba0b-81299c7553e4",
+    "ts": "2026-11-17T07:33:36.974888+00:00",
+    "source_id": "CAMERA-SIM-01",
+    "source_type": "camera",
+    "class": "bird",
+    "category": "animal",
+    "display_label": "ANIMAL DETECTED (Bird)",
+    "confidence": 0.95,
+    "location": {
+      "lat": 19.076,
+      "lon": 72.8777
+    },
+    "bbox": [
+      180.0,
+      40.0,
+      290.0,
+      130.0
+    ],
+    "source": "context",
+    "note": "simulation animal"
+  },
+  {
+    "id": "fa30a126-0cd8-4ed7-ae6a-386c5627d99d",
+    "ts": "2026-11-17T07:33:38.183030+00:00",
+    "source_id": "CAMERA-SIM-01",
+    "source_type": "camera",
+    "class": "smoke",
+    "category": "fire_smoke",
+    "display_label": "SMOKE DETECTED",
+    "confidence": 0.91,
+    "location": {
+      "lat": 19.076,
+      "lon": 72.8777
+    },
+    "bbox": [
+      20.0,
+      10.0,
+      630.0,
+      460.0
+    ],
+    "source": "sainet",
+    "note": "simulation hazard"
+  },
+  {
+    "id": "7b90e4d9-0ee0-426c-b627-232a2900f2de",
+    "ts": "2026-11-17T07:33:38.183170+00:00",
+    "source_id": "CAMERA-SIM-01",
+    "source_type": "camera",
+    "class": "deer",
+    "category": "animal",
+    "display_label": "ANIMAL DETECTED (Deer)",
+    "confidence": 0.93,
+    "location": {
+      "lat": 19.076,
+      "lon": 72.8777
+    },
+    "bbox": [
+      390.0,
+      230.0,
+      540.0,
+      370.0
+    ],
+    "source": "context",
+    "note": "simulation animal"
+  },
+  {
+    "id": "02687793-ae1c-478a-abe5-5112800f34fa",
+    "ts": "2026-11-17T07:33:38.183199+00:00",
+    "source_id": "CAMERA-SIM-01",
+    "source_type": "camera",
+    "class": "person",
+    "category": "human",
+    "display_label": "HUMAN DETECTED (Person)",
+    "confidence": 0.96,
+    "location": {
+      "lat": 19.076,
+      "lon": 72.8777
+    },
+    "bbox": [
+      120.0,
+      90.0,
+      250.0,
+      400.0
+    ],
+    "source": "context",
+    "note": "simulation human"
+  },
+  {
+    "id": "5673cacb-2f8c-4e8f-9048-2843e6305cda",
+    "ts": "2026-11-17T07:33:39.388873+00:00",
+    "source_id": "CAMERA-SIM-01",
+    "source_type": "camera",
+    "class": "smoke",
+    "category": "fire_smoke",
+    "display_label": "SMOKE DETECTED",
+    "confidence": 0.93,
+    "location": {
+      "lat": 19.076,
+      "lon": 72.8777
+    },
+    "bbox": [
+      20.0,
+      10.0,
+      640.0,
+      470.0
+    ],
+    "source": "sainet",
+    "note": "simulation hazard"
+  },
+  {
+    "id": "bbb66483-e3b6-46d0-8d17-c1ec97db7d20",
+    "ts": "2026-11-17T07:33:39.388918+00:00",
+    "source_id": "CAMERA-SIM-01",
+    "source_type": "camera",
+    "class": "bear",
+    "category": "animal",
+    "display_label": "ANIMAL DETECTED (Bear)",
+    "confidence": 0.92,
+    "location": {
+      "lat": 19.076,
+      "lon": 72.8777
+    },
+    "bbox": [
+      430.0,
+      170.0,
+      590.0,
+      330.0
+    ],
+    "source": "context",
+    "note": "simulation animal"
+  },
+  {
+    "id": "f16d52da-d886-456d-aa7f-7408d71ac4f7",
+    "ts": "2026-11-17T07:33:39.389109+00:00",
+    "source_id": "CAMERA-SIM-01",
+    "source_type": "camera",
+    "class": "car",
+    "category": "vehicle",
+    "display_label": "VEHICLE (Car)",
+    "confidence": 0.88,
+    "location": {
+      "lat": 19.076,
+      "lon": 72.8777
+    },
+    "bbox": [
+      460.0,
+      240.0,
+      630.0,
+      390.0
+    ],
+    "source": "context",
+    "note": "simulation vehicle"
+  },
+  {
+    "id": "43545de1-940d-4550-9c58-2013542cecdf",
+    "ts": "2026-11-17T07:33:40.593192+00:00",
+    "source_id": "CAMERA-SIM-01",
+    "source_type": "camera",
+    "class": "fire",
+    "category": "fire_smoke",
+    "display_label": "FIRE DETECTED",
+    "confidence": 0.94,
+    "location": {
+      "lat": 19.076,
+      "lon": 72.8777
+    },
+    "bbox": [
+      60.0,
+      50.0,
+      580.0,
+      410.0
+    ],
+    "source": "sainet",
+    "note": "simulation hazard"
+  },
+  {
+    "id": "553ebf9d-9515-48bb-b37d-1d7560b5bd1c",
+    "ts": "2026-11-17T07:33:40.593242+00:00",
+    "source_id": "CAMERA-SIM-01",
+    "source_type": "camera",
+    "class": "person",
+    "category": "human",
+    "display_label": "HUMAN DETECTED (Person)",
+    "confidence": 0.97,
+    "location": {
+      "lat": 19.076,
+      "lon": 72.8777
+    },
+    "bbox": [
+      100.0,
+      80.0,
+      230.0,
+      390.0
+    ],
+    "source": "context",
+    "note": "simulation human"
+  },
+  {
+    "id": "dc1b551f-e6e0-4c4e-aca5-5c6a1c82d408",
+    "ts": "2026-11-17T07:33:40.593285+00:00",
+    "source_id": "CAMERA-SIM-01",
+    "source_type": "camera",
+    "class": "deer",
+    "category": "animal",
+    "display_label": "ANIMAL DETECTED (Deer)",
+    "confidence": 0.9,
+    "location": {
+      "lat": 19.076,
+      "lon": 72.8777
+    },
+    "bbox": [
+      360.0,
+      200.0,
+      510.0,
+      350.0
+    ],
+    "source": "context",
+    "note": "simulation animal"
+  },
+  {
+    "id": "e0832318-ab13-423b-bd8c-7af40efcf2b6",
+    "ts": "2026-11-17T07:33:43.302318+00:00",
+    "source_id": "CAMERA-SIM-02",
+    "source_type": "camera",
+    "class": "fire",
+    "category": "fire_smoke",
+    "display_label": "FIRE DETECTED",
+    "confidence": 0.88,
+    "location": {
+      "lat": 19.078,
+      "lon": 72.87870000000001
+    },
+    "bbox": [
+      80.0,
+      60.0,
+      560.0,
+      400.0
+    ],
+    "source": "sainet",
+    "note": "simulation corroboration"
+  },
+  {
+    "id": "2f036fe9-3e6d-4897-94c7-b75a60d36bc7",
+    "ts": "2026-11-17T07:33:43.302367+00:00",
+    "source_id": "CAMERA-SIM-02",
+    "source_type": "camera",
+    "class": "deer",
+    "category": "animal",
+    "display_label": "ANIMAL DETECTED (Deer)",
+    "confidence": 0.92,
+    "location": {
+      "lat": 19.078,
+      "lon": 72.87870000000001
+    },
+    "bbox": [
+      380.0,
+      240.0,
+      510.0,
+      370.0
+    ],
+    "source": "context",
+    "note": "simulation wildlife fleeing hazard perimeter"
   }
 ]

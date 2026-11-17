@@ -79,13 +79,42 @@ export const DetectionOverlay: React.FC<DetectionOverlayProps> = ({
         if (rw < 4 || rh < 4) continue;
 
         const clsLower = (det.class || 'object').toLowerCase();
-        const isFire = clsLower.includes('fire') || clsLower.includes('flame');
+        const catLower = (det.category || '').toLowerCase();
+        const isFire = clsLower.includes('fire') || clsLower.includes('flame') || (catLower === 'fire_smoke' && clsLower.includes('fire'));
         const isSmoke = clsLower.includes('smoke');
-        const isPerson = clsLower === 'person';
+        const isHuman = catLower === 'human' || ['person', 'human', 'people', 'man', 'woman'].includes(clsLower);
+        const isAnimal = catLower === 'animal' || [
+          'bird', 'cat', 'dog', 'horse', 'sheep', 'cow', 'elephant',
+          'bear', 'zebra', 'giraffe', 'deer', 'fox', 'wolf', 'lion',
+          'tiger', 'monkey', 'rabbit', 'snake', 'boar', 'animal', 'wildlife'
+        ].includes(clsLower);
+        const isVehicle = catLower === 'vehicle' || ['car', 'truck', 'bus', 'motorcycle', 'bicycle'].includes(clsLower);
 
-        const mainColor = isFire ? '#ff3300' : isSmoke ? '#ffaa00' : isPerson ? '#00f0ff' : '#6ab0ff';
-        const glowColor = isFire ? 'rgba(255,51,0,0.18)' : isSmoke ? 'rgba(255,170,0,0.16)' : 'rgba(106,176,255,0.14)';
-        const emphasized = isFire || isSmoke;
+        // Vibrant distinct tactical palette:
+        // Red = Fire, Orange = Smoke, Neon Cyan = Human, Emerald = Animal, Sky Blue = Vehicle
+        const mainColor = isFire
+          ? '#ff2200'
+          : isSmoke
+          ? '#ff9900'
+          : isHuman
+          ? '#00f0ff'
+          : isAnimal
+          ? '#10b981'
+          : isVehicle
+          ? '#38bdf8'
+          : '#a855f7';
+
+        const glowColor = isFire
+          ? 'rgba(255,34,0,0.22)'
+          : isSmoke
+          ? 'rgba(255,153,0,0.18)'
+          : isHuman
+          ? 'rgba(0,240,255,0.20)'
+          : isAnimal
+          ? 'rgba(16,185,129,0.22)'
+          : 'rgba(56,189,248,0.16)';
+
+        const emphasized = isFire || isSmoke || isHuman || isAnimal;
         const confPercent = Math.round((det.confidence || 0) * 100);
 
         ctx.fillStyle = glowColor;
@@ -94,7 +123,7 @@ export const DetectionOverlay: React.FC<DetectionOverlayProps> = ({
         ctx.shadowColor = mainColor;
         ctx.shadowBlur = emphasized ? 14 + Math.sin(time * 4) * 4 : 8;
         ctx.strokeStyle = mainColor;
-        ctx.lineWidth = emphasized ? 2.2 : 1.6;
+        ctx.lineWidth = emphasized ? 2.4 : 1.6;
         ctx.strokeRect(rx, ry, rw, rh);
 
         const cornerLen = Math.min(rw, rh, emphasized ? 22 : 14);
@@ -120,20 +149,36 @@ export const DetectionOverlay: React.FC<DetectionOverlayProps> = ({
         }
 
         if (showLabels) {
-          const labelText = `${(det.class || 'object').toUpperCase()}  ${confPercent}%`;
+          let labelText = '';
+          if (det.display_label) {
+            labelText = `${det.display_label.toUpperCase()}  ${confPercent}%`;
+          } else if (isHuman) {
+            labelText = `HUMAN DETECTED (${clsLower.toUpperCase()})  ${confPercent}%`;
+          } else if (isAnimal) {
+            labelText = `ANIMAL DETECTED (${clsLower.toUpperCase()})  ${confPercent}%`;
+          } else if (isFire) {
+            labelText = `FIRE DETECTED  ${confPercent}%`;
+          } else if (isSmoke) {
+            labelText = `SMOKE DETECTED  ${confPercent}%`;
+          } else if (isVehicle) {
+            labelText = `VEHICLE (${clsLower.toUpperCase()})  ${confPercent}%`;
+          } else {
+            labelText = `${clsLower.toUpperCase()}  ${confPercent}%`;
+          }
+
           ctx.font = emphasized ? '700 12px Inter, system-ui, sans-serif' : '500 11px Inter, system-ui, sans-serif';
           const textWidth = ctx.measureText(labelText).width;
           const padX = 8, badgeW = textWidth + padX * 2;
-          const badgeH = emphasized ? 22 : 20;
+          const badgeH = emphasized ? 24 : 20;
           const badgeX = rx, badgeY = Math.max(2, ry - badgeH - 3);
 
           ctx.shadowBlur = 0;
-          ctx.fillStyle = emphasized ? 'rgba(0,0,0,0.85)' : 'rgba(0,0,0,0.7)';
+          ctx.fillStyle = emphasized ? 'rgba(5,10,18,0.92)' : 'rgba(0,0,0,0.7)';
           ctx.fillRect(badgeX, badgeY, badgeW, badgeH);
           ctx.fillStyle = mainColor;
-          ctx.fillRect(badgeX, badgeY, 3, badgeH);
+          ctx.fillRect(badgeX, badgeY, 3.5, badgeH);
           ctx.fillStyle = emphasized ? mainColor : '#e6ecf5';
-          ctx.fillText(labelText, badgeX + padX + 2, badgeY + badgeH - 7);
+          ctx.fillText(labelText, badgeX + padX + 3, badgeY + badgeH - 7);
         }
       }
 

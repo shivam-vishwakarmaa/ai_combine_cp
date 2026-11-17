@@ -201,6 +201,32 @@ async def broadcast(event_type: str, payload: Any):
         STATE.ws_clients.discard(d)
 
 
+# Classification helper sets for Human, Animal, Vehicle, and Fire/Smoke
+ANIMAL_CLASSES = {
+    "bird", "cat", "dog", "horse", "sheep", "cow", "elephant",
+    "bear", "zebra", "giraffe", "deer", "fox", "wolf", "lion",
+    "tiger", "monkey", "rabbit", "snake", "boar", "animal", "wildlife"
+}
+HUMAN_CLASSES = {"person", "human", "people", "man", "woman", "child"}
+FIRE_SMOKE_CLASSES = {"fire", "flame", "flames", "smoke", "wildfire"}
+VEHICLE_CLASSES = {"car", "truck", "bus", "motorcycle", "bicycle", "boat", "train", "vehicle"}
+
+
+def classify_detection(label: str) -> tuple[str, str]:
+    lbl = (label or "").lower()
+    if any(f in lbl for f in ("fire", "flame")):
+        return "fire_smoke", "FIRE DETECTED"
+    if "smoke" in lbl:
+        return "fire_smoke", "SMOKE DETECTED"
+    if lbl in HUMAN_CLASSES:
+        return "human", f"HUMAN DETECTED ({lbl.capitalize()})"
+    if lbl in ANIMAL_CLASSES:
+        return "animal", f"ANIMAL DETECTED ({lbl.capitalize()})"
+    if lbl in VEHICLE_CLASSES:
+        return "vehicle", f"VEHICLE ({lbl.capitalize()})"
+    return "object", f"OBJECT ({lbl.capitalize()})"
+
+
 # =========================================================
 # Detector — dual model (SAINet + YOLOv8n)
 # =========================================================
@@ -315,8 +341,13 @@ class Detector:
                         x1, y1, x2, y2 = [float(v) for v in b.xyxy[0].tolist()]
                         if x2 <= x1 or y2 <= y1:
                             continue
+                        cat, disp = classify_detection(label)
                         out.append({
+                            "id": str(uuid.uuid4()),
+                            "ts": _now_iso(),
                             "class": label,
+                            "category": cat,
+                            "display_label": disp,
                             "confidence": round(conf, 4),
                             "bbox": [x1, y1, x2, y2],
                             "source": "sainet",
@@ -345,8 +376,13 @@ class Detector:
                         x1, y1, x2, y2 = [float(v) for v in b.xyxy[0].tolist()]
                         if x2 <= x1 or y2 <= y1:
                             continue
+                        cat, disp = classify_detection(label)
                         out.append({
+                            "id": str(uuid.uuid4()),
+                            "ts": _now_iso(),
                             "class": label,
+                            "category": cat,
+                            "display_label": disp,
                             "confidence": round(conf, 4),
                             "bbox": [x1, y1, x2, y2],
                             "source": "context",
@@ -840,11 +876,35 @@ async def ingest_frame(
     img_bytes = await file.read()
     detections = DETECTOR.infer(img_bytes)
 
+    # Attach location, source_id, and ensure category/display_label on all detections
+    for d in detections:
+        d.setdefault("id", str(uuid.uuid4()))
+        d.setdefault("ts", _now_iso())
+        d["source_id"] = source_id
+        d["location"] = {"lat": lat, "lon": lon}
+        if "category" not in d or "display_label" not in d:
+            cat, disp = classify_detection(d.get("class", "object"))
+            d["category"] = cat
+            d["display_label"] = disp
+
     # Split detections: incident signals vs. situational context.
     fire_smoke = [d for d in detections if d.get("source") == "sainet"]
     context    = [d for d in detections if d.get("source") == "context"]
 
     observations = EVENT_ENGINE.process(fire_smoke, source_id, lat, lon)
+
+    # Record context detections (humans, animals, vehicles) into state
+    for d in context:
+        STATE.detections.append(d)
+        if d.get("category") in ("human", "animal"):
+            STATE.audit_log(
+                f"{d.get('category')}_detected",
+                cls=d.get("class"),
+                confidence=d.get("confidence"),
+                source=source_id,
+                label=d.get("display_label"),
+            )
+
     incidents_touched = []
     for obs in observations:
         inc = INCIDENT_ENGINE.ingest(obs, context=context)
@@ -960,6 +1020,15 @@ async def submit_report(body: UserReportRequest):
     return report
 
 
+@router.get("/api/detections")
+@router.get("/detections")
+async def list_detections(limit: int = 100, category: Optional[str] = None):
+    dets = STATE.detections[-limit:]
+    if category:
+        dets = [d for d in dets if d.get("category") == category]
+    return list(reversed(dets))
+
+
 @router.get("/api/audit", response_model=List[AuditEntry])
 @router.get("/audit", response_model=List[AuditEntry])
 async def get_audit(limit: int = 200):
@@ -1003,6 +1072,7 @@ async def ws_endpoint(ws: WebSocket):
             "type": "snapshot",
             "payload": {
                 "incidents": STATE.incidents[-50:],
+                "detections": STATE.detections[-50:],
                 "audit": STATE.audit[-50:],
                 "config": {"severity_model": SEVERITY,
                            "notification_mode": CONFIG["NOTIFICATION_MODE"]},
@@ -1028,49 +1098,143 @@ async def run_simulation():
         lat, lon = 19.0760, 72.8777
         source = "CAMERA-SIM-01"
 
-        sim_context = [
-            {"class": "person", "confidence": 0.91,
-             "bbox": [120.0, 90.0, 260.0, 420.0], "source": "context"},
-            {"class": "car", "confidence": 0.86,
-             "bbox": [430.0, 200.0, 620.0, 380.0], "source": "context"},
+        # Multi-object situational sequence containing Human, Wildlife Animals, Vehicle, Fire, and Smoke
+        sim_steps = [
+            {
+                "hazard": {"class": "smoke", "confidence": 0.82, "bbox": [40.0, 40.0, 580.0, 420.0]},
+                "objects": [
+                    {"class": "person", "confidence": 0.94, "bbox": [110.0, 90.0, 240.0, 410.0]},
+                    {"class": "deer", "confidence": 0.91, "bbox": [370.0, 210.0, 520.0, 360.0]},
+                ]
+            },
+            {
+                "hazard": {"class": "smoke", "confidence": 0.85, "bbox": [40.0, 30.0, 600.0, 430.0]},
+                "objects": [
+                    {"class": "bear", "confidence": 0.89, "bbox": [420.0, 160.0, 580.0, 320.0]},
+                    {"class": "truck", "confidence": 0.87, "bbox": [450.0, 230.0, 630.0, 390.0]},
+                ]
+            },
+            {
+                "hazard": {"class": "smoke", "confidence": 0.89, "bbox": [30.0, 20.0, 620.0, 450.0]},
+                "objects": [
+                    {"class": "person", "confidence": 0.92, "bbox": [130.0, 100.0, 270.0, 420.0]},
+                    {"class": "bird", "confidence": 0.95, "bbox": [180.0, 40.0, 290.0, 130.0]},
+                ]
+            },
+            {
+                "hazard": {"class": "smoke", "confidence": 0.91, "bbox": [20.0, 10.0, 630.0, 460.0]},
+                "objects": [
+                    {"class": "deer", "confidence": 0.93, "bbox": [390.0, 230.0, 540.0, 370.0]},
+                    {"class": "person", "confidence": 0.96, "bbox": [120.0, 90.0, 250.0, 400.0]},
+                ]
+            },
+            {
+                "hazard": {"class": "smoke", "confidence": 0.93, "bbox": [20.0, 10.0, 640.0, 470.0]},
+                "objects": [
+                    {"class": "bear", "confidence": 0.92, "bbox": [430.0, 170.0, 590.0, 330.0]},
+                    {"class": "car", "confidence": 0.88, "bbox": [460.0, 240.0, 630.0, 390.0]},
+                ]
+            },
+            {
+                "hazard": {"class": "fire", "confidence": 0.94, "bbox": [60.0, 50.0, 580.0, 410.0]},
+                "objects": [
+                    {"class": "person", "confidence": 0.97, "bbox": [100.0, 80.0, 230.0, 390.0]},
+                    {"class": "deer", "confidence": 0.90, "bbox": [360.0, 200.0, 510.0, 350.0]},
+                ]
+            },
         ]
 
-        for i in range(6):
+        for i, step in enumerate(sim_steps):
+            hz = step["hazard"]
+            cat_hz, disp_hz = classify_detection(hz["class"])
             obs_det = {
                 "id": str(uuid.uuid4()), "ts": _now_iso(),
                 "source_id": source, "source_type": "camera",
-                "class": "smoke", "confidence": 0.82 + i*0.02,
+                "class": hz["class"],
+                "category": cat_hz,
+                "display_label": disp_hz,
+                "confidence": hz["confidence"],
                 "location": {"lat": lat, "lon": lon},
-                "bbox": [40.0, 40.0, 600.0, 440.0], "note": "simulation",
+                "bbox": hz["bbox"],
+                "source": "sainet",
+                "note": "simulation hazard",
             }
             STATE.detections.append(obs_det)
-            EVENT_ENGINE._touch_persistence(source, "smoke")
-            inc = INCIDENT_ENGINE.ingest(obs_det, context=sim_context)
-            pers = EVENT_ENGINE.persistence(source, "smoke")
+            EVENT_ENGINE._touch_persistence(source, hz["class"])
+
+            # Build context objects (humans, animals, vehicles)
+            step_ctx: List[Dict[str, Any]] = []
+            for obj in step["objects"]:
+                c_cat, c_disp = classify_detection(obj["class"])
+                c_det = {
+                    "id": str(uuid.uuid4()), "ts": _now_iso(),
+                    "source_id": source, "source_type": "camera",
+                    "class": obj["class"],
+                    "category": c_cat,
+                    "display_label": c_disp,
+                    "confidence": obj["confidence"],
+                    "location": {"lat": lat, "lon": lon},
+                    "bbox": obj["bbox"],
+                    "source": "context",
+                    "note": f"simulation {c_cat}",
+                }
+                step_ctx.append(c_det)
+                STATE.detections.append(c_det)
+                # Audit log human and wildlife sightings
+                if c_cat in ("human", "animal"):
+                    STATE.audit_log(
+                        f"simulation_{c_cat}_sighted",
+                        cls=obj["class"],
+                        confidence=obj["confidence"],
+                        label=c_disp,
+                    )
+
+            inc = INCIDENT_ENGINE.ingest(obs_det, context=step_ctx)
+            pers = EVENT_ENGINE.persistence(source, hz["class"])
             inc["persistence"] = pers
             INCIDENT_ENGINE.recompute_severity(inc)
             inc["updated_at"] = _now_iso()
-            await broadcast("detections", [obs_det])
+
+            # Broadcast ALL detections (hazard + humans + animals)
+            all_step_dets = [obs_det] + step_ctx
+            await broadcast("detections", all_step_dets)
             await broadcast("incident", inc)
+
             if i == 2:
                 await ALERT_ENGINE.dispatch_for(inc, reason="simulation_early")
             if i == 5:
                 await ALERT_ENGINE.dispatch_for(inc, reason="simulation_persistent")
                 asyncio.create_task(escalation_loop(inc["id"]))
+
             await asyncio.sleep(1.2)
 
-        await asyncio.sleep(2)
+        await asyncio.sleep(1.5)
+        # Corroborating observation from Camera 2 with wildlife retreat
+        c2_lat, c2_lon = lat + 0.002, lon + 0.001
         obs2 = {
             "id": str(uuid.uuid4()), "ts": _now_iso(),
             "source_id": "CAMERA-SIM-02", "source_type": "camera",
-            "class": "fire", "confidence": 0.79,
-            "location": {"lat": lat + 0.002, "lon": lon + 0.001},
-            "bbox": [80.0, 60.0, 560.0, 400.0], "note": "simulation corroboration",
+            "class": "fire", "category": "fire_smoke", "display_label": "FIRE DETECTED",
+            "confidence": 0.88,
+            "location": {"lat": c2_lat, "lon": c2_lon},
+            "bbox": [80.0, 60.0, 560.0, 400.0], "source": "sainet",
+            "note": "simulation corroboration",
         }
-        STATE.detections.append(obs2)
-        inc = INCIDENT_ENGINE.ingest(obs2, context=sim_context)
+        deer_det = {
+            "id": str(uuid.uuid4()), "ts": _now_iso(),
+            "source_id": "CAMERA-SIM-02", "source_type": "camera",
+            "class": "deer", "category": "animal", "display_label": "ANIMAL DETECTED (Deer)",
+            "confidence": 0.92,
+            "location": {"lat": c2_lat, "lon": c2_lon},
+            "bbox": [380.0, 240.0, 510.0, 370.0], "source": "context",
+            "note": "simulation wildlife fleeing hazard perimeter",
+        }
+        STATE.detections.extend([obs2, deer_det])
+        STATE.audit_log("simulation_animal_sighted", cls="deer", confidence=0.92, label="ANIMAL DETECTED (Deer)")
+
+        inc = INCIDENT_ENGINE.ingest(obs2, context=[deer_det])
         INCIDENT_ENGINE.recompute_severity(inc)
-        await broadcast("detections", [obs2])
+        await broadcast("detections", [obs2, deer_det])
         await broadcast("incident", inc)
         await ALERT_ENGINE.dispatch_for(inc, reason="corroboration")
 
