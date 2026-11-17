@@ -2,7 +2,7 @@
 // import { MapContainer, TileLayer, useMap } from "react-leaflet";
 // import "leaflet/dist/leaflet.css";
 // import { Flame, Layers, Sliders, Activity, ShieldAlert, Sparkles, RefreshCw } from "lucide-react";
-// import type { Detection, Incident, GeoPoint } from "../types";
+// import type { BEDetection as Detection, Incident, GeoPoint } from "../types/backend";
 
 // interface HeatmapViewProps {
 //   detections: Detection[];
@@ -366,7 +366,7 @@
 import React, { useMemo } from "react";
 import { MapContainer, TileLayer, Circle, CircleMarker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import type { Detection, Incident, GeoPoint } from "../types";
+import type { BEDetection as Detection, Incident, GeoPoint } from "../types/backend";
 
 interface HeatmapViewProps {
   detections: Detection[];

@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AlertTriangle, Bell, X } from "lucide-react";
-import type { Alert, Role } from "../types";
+import type { BEAlert, Role } from "../types/backend";
 
 interface RoleAlertModalProps {
-  alerts: Alert[];
+  alerts: BEAlert[];
   userRole: Role;
 }
 
